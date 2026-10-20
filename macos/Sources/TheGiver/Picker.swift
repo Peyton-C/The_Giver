@@ -30,6 +30,9 @@ final class PickerModel {
     /// Applications the user has hidden for this kind, kept for the menu
     /// that brings them back.
     private(set) var hidden: [AppChoice] = []
+    /// Paths of applications the user added for this kind that LaunchServices
+    /// doesn't offer itself.
+    private var added: [String] = []
     var selection = 0
 
     /// Several files opened together share one picker, which has no single
@@ -103,6 +106,33 @@ final class PickerModel {
         save()
     }
 
+    var canArrange: Bool { kind != nil }
+
+    func isAdded(_ app: AppChoice) -> Bool { added.contains(app.url.path) }
+
+    /// Offers an application LaunchServices doesn't list for this kind, as
+    /// many can open more than their Info.plist declares. Selects it, so
+    /// Return opens with it straight away.
+    func add(_ url: URL) {
+        let url = url.standardizedFileURL
+        guard kind != nil, Bundle(url: url)?.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+        if let index = hidden.firstIndex(where: { $0.url == url }) { unhide(hidden[index]) }
+        if !apps.contains(where: { $0.url == url }) {
+            apps.append(AppChoice(url: url))
+            added.append(url.path)
+            save()
+        }
+        selection = apps.firstIndex { $0.url == url } ?? selection
+    }
+
+    func remove(_ app: AppChoice) {
+        guard isAdded(app), let index = apps.firstIndex(of: app) else { return }
+        apps.remove(at: index)
+        added.removeAll { $0 == app.url.path }
+        selection = min(selection, max(apps.count - 1, 0))
+        save()
+    }
+
     private static let arrangementsKey = "arrangements"
     /// Sets a name ending apart from the content type identifiers that share
     /// the arrangements dictionary with it.
@@ -111,7 +141,7 @@ final class PickerModel {
     private func save() {
         guard let kind else { return }
         var all = UserDefaults.standard.dictionary(forKey: Self.arrangementsKey) ?? [:]
-        all[kind] = ["order": apps.map(\.url.path), "hidden": hidden.map(\.url.path)]
+        all[kind] = ["order": apps.map(\.url.path), "hidden": hidden.map(\.url.path), "added": added]
         UserDefaults.standard.set(all, forKey: Self.arrangementsKey)
     }
 
@@ -120,6 +150,11 @@ final class PickerModel {
         let saved = kind.flatMap { UserDefaults.standard.dictionary(forKey: Self.arrangementsKey)?[$0] } as? [String: [String]]
         let order = saved?["order"] ?? []
         let hiddenPaths = Set(saved?["hidden"] ?? [])
+        // An added application drops out once it is uninstalled, or once
+        // LaunchServices lists it anyway and it no longer needs adding.
+        let listed = Set(urls.map(\.path))
+        added = (saved?["added"] ?? []).filter { !listed.contains($0) && FileManager.default.fileExists(atPath: $0) }
+        urls += added.map { URL(fileURLWithPath: $0) }
 
         hidden = urls.filter { hiddenPaths.contains($0.path) }.map(AppChoice.init)
         urls.removeAll { hiddenPaths.contains($0.path) }

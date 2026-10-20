@@ -30,6 +30,7 @@ final class PickerPanel: NSPanel {
             open: { [weak self] index, keepOpen in self?.open(index, keepOpen: keepOpen) },
             copy: { [weak self] in self?.copyTarget() },
             showInFinder: { [weak self] in self?.showInFinder() },
+            addApplication: { [weak self] in self?.chooseApplication() },
             showSettings: { [weak self] in self?.onShowSettings() },
             close: { [weak self] in self?.close() })
         // Size the window once, before it is shown. Letting SwiftUI resize it
@@ -96,6 +97,16 @@ final class PickerPanel: NSPanel {
         close()
     }
 
+    private func chooseApplication() {
+        let panel = NSOpenPanel()
+        panel.message = model.kindName.map { "Choose an application to offer for \($0)" } ?? "Choose an application"
+        panel.prompt = "Add"
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        model.add(url)
+    }
+
     /// Keys are taken here, ahead of the responder chain, because the hosting
     /// view swallows the ones it has no use for and keyDown never sees them.
     override func sendEvent(_ event: NSEvent) {
@@ -150,6 +161,7 @@ struct PickerView: View {
     let open: (Int, Bool) -> Void
     let copy: () -> Void
     let showInFinder: () -> Void
+    let addApplication: () -> Void
     let showSettings: () -> Void
     let close: () -> Void
     @State private var dragged: AppChoice?
@@ -227,6 +239,9 @@ struct PickerView: View {
             if model.isFile {
                 Button("Show in Finder", action: showInFinder)
             }
+            Divider()
+            Button("Add Application…", action: addApplication)
+                .disabled(!model.canArrange)
             if !model.hidden.isEmpty {
                 Menu("Hidden Applications") {
                     ForEach(model.hidden) { app in
@@ -254,7 +269,13 @@ struct PickerView: View {
         Button("Move Right") { model.move(app, by: 1) }
             .disabled(index == model.apps.count - 1)
         Divider()
-        Button(model.kindName.map { "Hide for \($0)" } ?? "Hide") { model.hide(app) }
+        // An added application has nothing to come back from, so it is
+        // removed rather than hidden.
+        if model.isAdded(app) {
+            Button(model.kindName.map { "Remove from \($0)" } ?? "Remove") { model.remove(app) }
+        } else {
+            Button(model.kindName.map { "Hide for \($0)" } ?? "Hide") { model.hide(app) }
+        }
     }
 
     private var pathField: some View {

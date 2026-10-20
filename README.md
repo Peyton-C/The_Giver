@@ -40,11 +40,11 @@ On Linux, choose The Giver in Settings under Default Applications, in a file's O
 | Escape | Close |
 
 ## Arrangement
-On macOS, drag an application to move it, or right-click it for Move Left, Move Right and Hide. Hidden applications come back from the picker's menu. The Giver keeps the order and the hidden applications per kind of file and per link scheme, so hiding Books for MPEG-4 movies leaves it in place for EPUBs.
+On macOS, drag an application to move it, or right-click it for Move Left, Move Right and Hide. Hidden applications come back from the picker's menu. An application can often open more than it tells macOS, as Audacity does WavPack, so choose Add Application from the picker's menu to offer it anyway, and right-click it to remove it again. The Giver keeps the order and the hidden applications per kind of file and per link scheme, so hiding Books for MPEG-4 movies leaves it in place for EPUBs.
 
 macOS types a file by its last extension, so a `.stem.mp4` is just another MPEG-4 movie. The Giver treats the name endings listed in its settings as kinds of their own, `.stem.mp4` among them from the start, so you can hide QuickTime Player for stems and Track 10 for videos.
 
-The Linux frontend cannot rearrange or hide applications yet.
+The Linux frontend cannot rearrange, hide or add applications yet.
 
 ## Layout
 
